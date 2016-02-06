@@ -17,7 +17,7 @@ void f()
   // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: use of std::bind is deprecated [misc-avoid-std-bind]
 }
 
-// CHECK-FIXES: auto clj = [] { return add(2, 2); };
+// CHECK-FIXES: auto clj = [] { return add(); };
 
 struct Adder
 {

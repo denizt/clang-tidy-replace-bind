@@ -6,7 +6,7 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-
+#include <cassert>
 #include "AvoidStdBindCheck.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
@@ -21,8 +21,8 @@ namespace misc {
 void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(
       cxxConstructExpr(
-          hasType(qualType(hasDeclaration(
-              classTemplateSpecializationDecl(matchesName("::std::bind"))))))
+          hasType(qualType(hasDeclaration(classTemplateSpecializationDecl()))),
+          hasArgument(0, callExpr(hasArgument(0, declRefExpr().bind("f")))))
           .bind("bind"),
       this);
 }
@@ -35,7 +35,12 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
 
   std::string Buffer;
   llvm::raw_string_ostream Stream(Buffer);
-  Stream << "[] { return " << "42" << "; };";
+
+  const auto *F = Result.Nodes.getNodeAs<DeclRefExpr>("f");
+
+  if (!F)
+    return;
+  Stream << "[] { return " << F->getNameInfo().getName() << "(); };";
 
   SourceLocation DeclEnd = Lexer::getLocForEndOfToken(
       MatchedDecl->getLocEnd(), 0, *Result.SourceManager,
