@@ -21,7 +21,8 @@ namespace misc {
 void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(
       cxxConstructExpr(
-          hasType(qualType(hasDeclaration(classTemplateSpecializationDecl()))),
+          hasType(qualType(hasDeclaration(
+              classTemplateSpecializationDecl(matchesName("std::bind"))))),
           hasArgument(0, callExpr(hasArgument(0, declRefExpr().bind("f")))
                              .bind("call")))
           .bind("bind"),
@@ -39,7 +40,7 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
 
   const auto *F = Result.Nodes.getNodeAs<DeclRefExpr>("f");
   const auto *C = Result.Nodes.getNodeAs<CallExpr>("call");
-  
+
   StringRef LambdaCap = "";
   for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
     if (!dyn_cast<MaterializeTemporaryExpr>(C->getArg(i))) {
@@ -51,8 +52,9 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   Stream << "[" << LambdaCap << "] { return " << F->getNameInfo().getName()
          << "(";
 
-    for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
-    if ( i!=1 ) Stream << ", ";
+  for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
+    if (i != 1)
+      Stream << ", ";
     auto ArgExpr = C->getArg(i);
     auto ArgRange = SourceRange(ArgExpr->getLocStart(), ArgExpr->getLocEnd());
     auto ArgText = Lexer::getSourceText(
@@ -61,8 +63,6 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
     Stream << ArgText;
   }
   Stream << "); };";
-
-
 
   SourceLocation DeclEnd = Lexer::getLocForEndOfToken(
       MatchedDecl->getLocEnd(), 0, *Result.SourceManager,
