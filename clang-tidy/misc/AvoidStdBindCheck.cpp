@@ -30,8 +30,15 @@ void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
 void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   // FIXME: Add callback implementation.
   const auto *MatchedDecl = Result.Nodes.getNodeAs<CXXConstructExpr>("bind");
-  
-  diag(MatchedDecl->getLocation(), "use of std::bind is deprecated");
+
+  auto DiagnosticBuilder =
+      diag(MatchedDecl->getLocation(), "use of std::bind is deprecated");
+
+  std::string ReplacementText = "[] { return 99; }";
+
+  DiagnosticBuilder << FixItHint::CreateReplacement(MatchedDecl->getLocation(),
+                                                    ReplacementText);
+
   /*
   if (MatchedDecl->getName().startswith("avoid-std-bind_"))
     return;

@@ -17,6 +17,8 @@ void f()
 // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: use of std::bind is deprecated [misc-avoid-std-bind]
 }
 
+// CHECK-FIXE: auto clj = []{ return 42; }
+
 struct Adder
 {
   int operator()() const { return x_ + y_; }
