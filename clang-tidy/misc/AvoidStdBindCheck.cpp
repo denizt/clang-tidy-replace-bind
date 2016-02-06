@@ -73,12 +73,12 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
 
   bool HasCapturedArgument =
       std::find_if(BindArguments.begin(), BindArguments.end(),
-                   [](const auto &B) { return !B.IsTemporaryExpr; }) !=
+                   [](const BindArgument &B) { return !B.IsTemporaryExpr; }) !=
       BindArguments.end();
 
   size_t PlaceholderCount =
       std::count_if(BindArguments.begin(), BindArguments.end(),
-                   [](const auto &B) { return B.PlaceHolder; });
+                   [](const BindArgument &B) { return B.PlaceHolder; });
   
   StringRef LambdaCap = HasCapturedArgument ? "=" : "";
 
