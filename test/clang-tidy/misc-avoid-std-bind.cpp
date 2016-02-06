@@ -13,11 +13,11 @@ int add(int x, int y) { return x + y; }
 
 void f()
 {
-  auto clj = std::bind(&add,2,2);
+  auto clj = std::bind(add,2,2);
   // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: use of std::bind is deprecated [misc-avoid-std-bind]
 }
 
-// CHECK-FIXES: auto clj = [] { return 42; };
+// CHECK-FIXES: auto clj = [] { return add(2, 2); };
 
 struct Adder
 {

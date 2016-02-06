@@ -33,7 +33,9 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   auto DiagnosticBuilder =
       diag(MatchedDecl->getLocation(), "use of std::bind is deprecated");
 
-  std::string ReplacementText = "[] { return 42; };";
+  std::string Buffer;
+  llvm::raw_string_ostream Stream(Buffer);
+  Stream << "[] { return " << "42" << "; };";
 
   SourceLocation DeclEnd = Lexer::getLocForEndOfToken(
       MatchedDecl->getLocEnd(), 0, *Result.SourceManager,
@@ -42,7 +44,7 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   SourceRange ReplacedRange(MatchedDecl->getLocStart(), DeclEnd);
 
   DiagnosticBuilder << FixItHint::CreateReplacement(ReplacedRange,
-                                                    ReplacementText);
+                                                    Stream.str());
 }
 
 } // namespace misc
