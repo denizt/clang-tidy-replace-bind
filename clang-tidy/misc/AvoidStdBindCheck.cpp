@@ -29,6 +29,12 @@ void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
       this);
 }
 
+struct BindArgument
+{
+  StringRef Tokens;
+  bool IsTemporaryExpr = false;
+};
+
 void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *MatchedDecl = Result.Nodes.getNodeAs<CXXConstructExpr>("bind");
 
@@ -41,26 +47,31 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *F = Result.Nodes.getNodeAs<DeclRefExpr>("f");
   const auto *C = Result.Nodes.getNodeAs<CallExpr>("call");
 
-  StringRef LambdaCap = "";
+  std::vector<BindArgument> BindArguments;
   for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
-    if (!dyn_cast<MaterializeTemporaryExpr>(C->getArg(i))) {
-      LambdaCap = "=";
-      break;
-    }
+    const Expr* E = C->getArg(i);
+    BindArgument B;
+    B.IsTemporaryExpr = dyn_cast<MaterializeTemporaryExpr>(E);
+    B.Tokens = Lexer::getSourceText(
+        CharSourceRange::getCharRange(E->getLocStart(), E->getLocEnd()),
+        *Result.SourceManager, Result.Context->getLangOpts());
+    BindArguments.push_back(B);
   }
 
-  Stream << "[" << LambdaCap << "] { return " << F->getNameInfo().getName()
-         << "(";
+  bool HasCapturedArgument =
+      std::find_if(BindArguments.begin(), BindArguments.end(),
+                   [](const auto &X) { return !X.IsTemporaryExpr; }) !=
+      BindArguments.end();
 
-  for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
-    if (i != 1)
-      Stream << ", ";
-    auto ArgExpr = C->getArg(i);
-    auto ArgRange = SourceRange(ArgExpr->getLocStart(), ArgExpr->getLocEnd());
-    auto ArgText = Lexer::getSourceText(
-        CharSourceRange::getTokenRange(ArgRange), *Result.SourceManager,
-        Result.Context->getLangOpts());
-    Stream << ArgText;
+  StringRef LambdaCap = HasCapturedArgument ? "=" : "";
+
+  Stream << "[" << LambdaCap << "]"
+         << "{ return " << F->getNameInfo().getName() << "(";
+
+  StringRef Delimiter = "";
+  for (const auto &B : BindArguments) {
+    Stream << Delimiter << B.Tokens;
+    Delimiter = ", ";
   }
   Stream << "); };";
 
