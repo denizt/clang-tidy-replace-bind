@@ -66,7 +66,7 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   StringRef LambdaCap = HasCapturedArgument ? "=" : "";
 
   Stream << "[" << LambdaCap << "]"
-         << "{ return " << F->getNameInfo().getName() << "(";
+         << " { return " << F->getNameInfo().getName() << "(";
 
   StringRef Delimiter = "";
   for (const auto &B : BindArguments) {
