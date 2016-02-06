@@ -19,6 +19,16 @@ void f()
 
 // CHECK-FIXES: auto clj = [] { return add(2, 2); };
 
+void g()
+{
+  int x = 2;
+  int y = 2;
+  auto clj = std::bind(add,x,y);
+  // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: use of std::bind is deprecated [misc-avoid-std-bind]
+}
+
+// CHECK-FIXES: auto clj = [=] { return add(x, y); };
+
 struct Adder
 {
   int operator()() const { return x_ + y_; }

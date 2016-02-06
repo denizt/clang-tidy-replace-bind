@@ -38,13 +38,20 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   llvm::raw_string_ostream Stream(Buffer);
 
   const auto *F = Result.Nodes.getNodeAs<DeclRefExpr>("f");
-
-  if (!F)
-    return;
-  Stream << "[] { return " << F->getNameInfo().getName() << "(";
-  
   const auto *C = Result.Nodes.getNodeAs<CallExpr>("call");
+  
+  StringRef LambdaCap = "";
   for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
+    if (!dyn_cast<MaterializeTemporaryExpr>(C->getArg(i))) {
+      LambdaCap = "=";
+      break;
+    }
+  }
+
+  Stream << "[" << LambdaCap << "] { return " << F->getNameInfo().getName()
+         << "(";
+
+    for (size_t i = 1, ArgCount = C->getNumArgs(); i < ArgCount; ++i) {
     if ( i!=1 ) Stream << ", ";
     auto ArgExpr = C->getArg(i);
     auto ArgRange = SourceRange(ArgExpr->getLocStart(), ArgExpr->getLocEnd());
