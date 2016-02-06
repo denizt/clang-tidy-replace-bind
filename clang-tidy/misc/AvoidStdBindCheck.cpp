@@ -53,7 +53,7 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
     BindArgument B;
     B.IsTemporaryExpr = dyn_cast<MaterializeTemporaryExpr>(E);
     B.Tokens = Lexer::getSourceText(
-        CharSourceRange::getCharRange(E->getLocStart(), E->getLocEnd()),
+        CharSourceRange::getTokenRange(E->getLocStart(), E->getLocEnd()),
         *Result.SourceManager, Result.Context->getLangOpts());
     BindArguments.push_back(B);
   }
