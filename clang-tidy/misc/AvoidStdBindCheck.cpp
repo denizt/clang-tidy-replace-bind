@@ -10,6 +10,7 @@
 #include "AvoidStdBindCheck.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Lex/Lexer.h"
 
 using namespace clang::ast_matchers;
 
@@ -18,7 +19,6 @@ namespace tidy {
 namespace misc {
 
 void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
-  // FIXME: Add matchers.
   Finder->addMatcher(
       cxxConstructExpr(
           hasType(qualType(hasDeclaration(
@@ -28,24 +28,21 @@ void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
 }
 
 void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
-  // FIXME: Add callback implementation.
   const auto *MatchedDecl = Result.Nodes.getNodeAs<CXXConstructExpr>("bind");
 
   auto DiagnosticBuilder =
       diag(MatchedDecl->getLocation(), "use of std::bind is deprecated");
 
-  std::string ReplacementText = "[] { return 99; }";
+  std::string ReplacementText = "[] { return 42; };";
 
-  DiagnosticBuilder << FixItHint::CreateReplacement(MatchedDecl->getLocation(),
+  SourceLocation DeclEnd = Lexer::getLocForEndOfToken(
+      MatchedDecl->getLocEnd(), 0, *Result.SourceManager,
+      Result.Context->getLangOpts());
+
+  SourceRange ReplacedRange(MatchedDecl->getLocStart(), DeclEnd);
+
+  DiagnosticBuilder << FixItHint::CreateReplacement(ReplacedRange,
                                                     ReplacementText);
-
-  /*
-  if (MatchedDecl->getName().startswith("avoid-std-bind_"))
-    return;
-  diag(MatchedDecl->getLocation(), "function '%0' is insufficiently avoid-std-bind")
-      << MatchedDecl->getName()
-      << FixItHint::CreateInsertion(MatchedDecl->getLocation(), "avoid-std-bind_");
-      */
 }
 
 } // namespace misc
