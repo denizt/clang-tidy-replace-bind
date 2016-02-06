@@ -31,7 +31,6 @@ void g()
 
 struct placeholder {};
 placeholder _1;
-placeholder _2;
 
 void h()
 {
@@ -40,7 +39,8 @@ void h()
   // CHECK-MESSAGES: :[[@LINE-1]]:14: warning: use of std::bind is deprecated [misc-avoid-std-bind]
 }
 
-// CHECK-FIXES: auto clj = [](auto ph_1){ return add(x, ph_1); };
+// CHECK-FIXES: auto clj = [=](auto arg1) { return add(x, arg1); };
+
 
 struct Adder
 {

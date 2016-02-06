@@ -18,6 +18,16 @@ namespace clang {
 namespace tidy {
 namespace misc {
 
+namespace {
+struct BindArgument {
+  StringRef Tokens;
+  Optional<StringRef> PlaceHolder;
+  bool IsTemporaryExpr = false;
+};
+
+static llvm::Regex MatchPlaceholder("^_([0-9]+)$");
+}
+
 void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(
       cxxConstructExpr(
@@ -28,12 +38,6 @@ void AvoidStdBindCheck::registerMatchers(MatchFinder *Finder) {
           .bind("bind"),
       this);
 }
-
-struct BindArgument
-{
-  StringRef Tokens;
-  bool IsTemporaryExpr = false;
-};
 
 void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *MatchedDecl = Result.Nodes.getNodeAs<CXXConstructExpr>("bind");
@@ -55,25 +59,55 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
     B.Tokens = Lexer::getSourceText(
         CharSourceRange::getTokenRange(E->getLocStart(), E->getLocEnd()),
         *Result.SourceManager, Result.Context->getLangOpts());
+
+    SmallVector<StringRef, 2> Matches;
+    if(MatchPlaceholder.match(B.Tokens, &Matches))
+    {
+      B.PlaceHolder = (llvm::Twine("arg") + Matches[1]).str();
+    }
     BindArguments.push_back(B);
   }
 
   bool HasCapturedArgument =
       std::find_if(BindArguments.begin(), BindArguments.end(),
-                   [](const auto &X) { return !X.IsTemporaryExpr; }) !=
+                   [](const auto &B) { return !B.IsTemporaryExpr; }) !=
       BindArguments.end();
 
+  size_t PlaceholderCount =
+      std::count_if(BindArguments.begin(), BindArguments.end(),
+                   [](const auto &B) { return B.PlaceHolder; });
+  
   StringRef LambdaCap = HasCapturedArgument ? "=" : "";
 
-  Stream << "[" << LambdaCap << "]"
-         << " { return " << F->getNameInfo().getName() << "(";
+  Stream << "[" << LambdaCap << "]";
 
-  StringRef Delimiter = "";
-  for (const auto &B : BindArguments) {
-    Stream << Delimiter << B.Tokens;
-    Delimiter = ", ";
+  // Add lambda args for placeholders.
+  {
+    if (PlaceholderCount) Stream << "(";
+    
+    StringRef Delimiter = "";
+    for (size_t I=0; I<PlaceholderCount; ++I) {
+      Stream << "auto arg" << I+1;
+      Delimiter = ", ";
+    }
+    
+    if (PlaceholderCount) Stream << ")";
   }
-  Stream << "); };";
+  
+  Stream << " { return " << F->getNameInfo().getName() << "(";
+
+  // Add function args for bind.
+  {
+    StringRef Delimiter = "";
+    for (const auto &B : BindArguments) {
+      if (B.PlaceHolder)
+        Stream << Delimiter << *B.PlaceHolder;
+      else
+        Stream << Delimiter << B.Tokens;
+      Delimiter = ", ";
+    }
+    Stream << "); };";
+  }
 
   SourceLocation DeclEnd = Lexer::getLocForEndOfToken(
       MatchedDecl->getLocEnd(), 0, *Result.SourceManager,
