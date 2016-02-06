@@ -45,6 +45,9 @@ void AvoidStdBindCheck::check(const MatchFinder::MatchResult &Result) {
   auto DiagnosticBuilder =
       diag(MatchedDecl->getLocation(), "use of std::bind is deprecated");
 
+  if (!getLangOpts().CPlusPlus14)
+    return;
+
   std::string Buffer;
   llvm::raw_string_ostream Stream(Buffer);
 
